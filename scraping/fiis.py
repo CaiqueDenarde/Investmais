@@ -1,11 +1,36 @@
+# fiis.py
+import os
 import requests
 from bs4 import BeautifulSoup
+from cryptography.fernet import Fernet
 
-URL = "https://www.fundamentus.com.br/fii_resultado.php"
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 
+# ======== Configuração de criptografia ========
+KEY = os.environ.get("ENCRYPTION_KEY")
+ENCRYPTED_FII = os.environ.get("ENCRYPTED_FII")
+
+if not all([KEY, ENCRYPTED_FII]):
+    raise EnvironmentError(
+        "As variáveis de ambiente ENCRYPTION_KEY e ENCRYPTED_FII precisam estar definidas."
+    )
+
+fernet = Fernet(KEY.encode())
+
+def decrypt_url(encrypted_url: str) -> str:
+    """
+    Descriptografa a URL usando Fernet.
+    """
+    return fernet.decrypt(encrypted_url.encode()).decode()
+
+
+# ======== Função principal ========
 def get_fiis():
-    r = requests.get(URL, headers=HEADERS, timeout=20)
+    """
+    Retorna os dados completos dos FIIs do Fundamentus.
+    """
+    url = decrypt_url(ENCRYPTED_FII)
+    r = requests.get(url, headers=HEADERS, timeout=20)
     r.encoding = "ISO-8859-1"
 
     soup = BeautifulSoup(r.text, "html.parser")
@@ -38,3 +63,12 @@ def get_fiis():
             dados.append(dict(zip(colunas, cols)))
 
     return dados
+
+
+# ======== Teste rápido ========
+if __name__ == "__main__":
+    try:
+        fiis = get_fiis()
+        print("Exemplo de FIIs:", fiis[:5])  # mostra os 5 primeiros registros
+    except Exception as e:
+        print("Erro ao buscar FIIs:", e)
