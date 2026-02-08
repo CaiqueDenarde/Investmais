@@ -7,25 +7,17 @@ def get_fiis():
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
 
-        # abre a página
-        page.goto(URL_FIIS, timeout=60000)
+        page.goto(URL_FIIS, timeout=120000)
 
-        # espera a tabela renderizada via JS
         xpath_tabela = "/html/body/div[1]/div[2]/table"
-        page.wait_for_selector(f"xpath={xpath_tabela}", timeout=60000)
-
-        # salva HTML para debug
-        with open("debug_fiis.html", "w", encoding="utf-8") as f:
-            f.write(page.content())
+        page.wait_for_selector(f"xpath={xpath_tabela}", timeout=120000)
 
         table = page.query_selector(f"xpath={xpath_tabela}")
 
-        # pega os headers
         headers = [th.inner_text().strip() for th in table.query_selector_all("thead th")]
         if headers:
             headers[0] = "FII"
 
-        # coleta dados
         dados = []
         for row in table.query_selector_all("tbody tr"):
             cols = [td.inner_text().strip() for td in row.query_selector_all("td")]
@@ -34,9 +26,3 @@ def get_fiis():
 
         browser.close()
         return dados
-
-
-# Exemplo de execução direta
-if __name__ == "__main__":
-    fiis = get_fiis()
-    print(f"Coletados {len(fiis)} FIIs")
