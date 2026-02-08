@@ -9,7 +9,7 @@ def get_fiis():
     Coleta todos os FIIs do Fundamentus usando Playwright.
     """
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
         page = browser.new_page()
         page.goto(URL_FII)
 

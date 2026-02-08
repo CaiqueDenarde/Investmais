@@ -1,15 +1,9 @@
 name: Atualiza Ativos
 
 on:
-  # Executa manualmente e via pull/merge
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  
   # Executa diariamente às 18h BRT (21h UTC)
   schedule:
-    - cron: "0 21 * * *"  # minuto hora dia mês dia-da-semana (UTC)
+    - cron: "0 21 * * *"
 
 jobs:
   build:
@@ -24,11 +18,19 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Instalar dependências
+      - name: Instalar dependências do sistema para Playwright
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-4-1 libgraphene-1.0-0 libevent-2.1-7 libopus0 \
+            libgstreamer-plugins-base1.0-0 libgstreamer1.0-0 libharfbuzz-icu0 \
+            libwayland-server0 libwoff2dec1 libx264-163 \
+            libavif16 libsecret-1-0
+
+      - name: Instalar dependências Python e Playwright
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          # Instala Playwright browsers
           python -m playwright install
 
       - name: Rodar scraping

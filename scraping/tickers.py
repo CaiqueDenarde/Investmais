@@ -3,6 +3,9 @@ from acoes import get_acoes
 from fiis import get_fiis
 
 def get_all_tickers():
+    """
+    Retorna todos os tickers válidos, separados em AÇÕES e FIIs.
+    """
     acoes = get_acoes()
     fiis = get_fiis()
 

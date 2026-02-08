@@ -9,14 +9,13 @@ def get_acoes():
     Coleta todas as ações do Fundamentus usando Playwright.
     """
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
         page = browser.new_page()
         page.goto(URL_ACAO)
-        
+
         # Espera a tabela carregar
         page.wait_for_selector("table#resultado")
 
-        # Pega o HTML completo
         html = page.content()
 
         soup = BeautifulSoup(html, "html.parser")
