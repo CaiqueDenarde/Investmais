@@ -1,26 +1,41 @@
-# acoes.py
 from playwright.sync_api import sync_playwright
 
-URL = "https://www.fundamentus.com.br/resultado.php"
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/115.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Referer": "https://www.fundamentus.com.br/"
+}
+
+URL_ACAO = "https://www.fundamentus.com.br/resultado.php"
 
 def get_acoes():
-    resultados = []
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)  # headless para rodar no GitHub
+        browser = p.chromium.launch(headless=True)  # ← modo headless
         page = browser.new_page()
-        page.goto(URL, timeout=60000)  # espera até 60s para carregar
-        page.wait_for_selector("table#resultado", timeout=60000)  # espera a tabela
+        page.set_extra_http_headers(HEADERS)
+        page.goto(URL_ACAO, timeout=60000)
+        page.wait_for_selector("table#resultado")  # espera tabela carregar
 
-        # coleta os dados
+        # salva HTML para debug
+        with open("debug_acoes.html", "w", encoding="utf-8") as f:
+            f.write(page.content())
+
+        # coleta dados da tabela
         rows = page.query_selector_all("table#resultado tbody tr")
-        headers = [th.inner_text().strip() for th in page.query_selector_all("table#resultado thead th")]
-        if headers:
-            headers[0] = "Ação"
+        col_headers = [th.inner_text().strip() for th in page.query_selector_all("table#resultado thead th")]
+        if col_headers:
+            col_headers[0] = "Ação"
 
+        dados = []
         for row in rows:
-            cols = row.query_selector_all("td")
+            cols = [td.inner_text().strip() for td in row.query_selector_all("td")]
             if cols:
-                resultados.append({headers[i]: cols[i].inner_text().strip() for i in range(len(cols))})
+                dados.append(dict(zip(col_headers, cols)))
 
         browser.close()
-    return resultados
+        return dados

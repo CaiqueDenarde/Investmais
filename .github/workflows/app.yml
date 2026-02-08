@@ -1,30 +1,46 @@
 name: Atualiza Ativos
 
 on:
-  # Executa manualmente e via push/merge
+  # Executa manualmente e via cron diário
   workflow_dispatch:
-
-  # Executa diariamente às 18h BRT (21h UTC)
   schedule:
-    - cron: "0 21 * * *"
+    - cron: "0 21 * * *"  # 18h BRT = 21h UTC
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: mcr.microsoft.com/playwright/python:1.43.0-focal
 
     steps:
       - name: Checar código
         uses: actions/checkout@v3
 
-      - name: Instalar dependências
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependências Python
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Instalar dependências do Playwright no Linux
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libnss3 libatk-bridge2.0-0 libx11-xcb1 libxcomposite1 libxdamage1 \
+            libxrandr2 libgtk-3-0 libgbm1 libasound2 libcups2 libxss1 \
+            libxshmfence1 libpangocairo-1.0-0 libatk1.0-0 libdrm2 \
+            libwayland-client0 libwayland-server0 libegl1 libopus0 \
+            libwoff2dec1 libx264-163 libharfbuzz-icu0
+
+      - name: Instalar browsers do Playwright
+        run: |
+          python -m playwright install
+
       - name: Rodar scraping
-        run: python -m scraping.main
+        run: |
+          python -m scraping.main
 
       - name: Salvar JSONs analisados
         uses: actions/upload-artifact@v4

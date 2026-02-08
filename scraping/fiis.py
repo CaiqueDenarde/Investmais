@@ -1,25 +1,39 @@
-# fiis.py
 from playwright.sync_api import sync_playwright
 
-URL = "https://www.fundamentus.com.br/fii_resultado.php"
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/115.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Referer": "https://www.fundamentus.com.br/"
+}
+
+URL_FII = "https://www.fundamentus.com.br/fii_resultado.php"
 
 def get_fiis():
-    resultados = []
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(headless=True)  # ← modo headless
         page = browser.new_page()
-        page.goto(URL, timeout=60000)
-        page.wait_for_selector("table", timeout=60000)  # a tabela dos FIIs não tem id
+        page.set_extra_http_headers(HEADERS)
+        page.goto(URL_FII, timeout=60000)
+        page.wait_for_selector("table")  # espera tabela carregar
+
+        with open("debug_fiis.html", "w", encoding="utf-8") as f:
+            f.write(page.content())
 
         rows = page.query_selector_all("table tbody tr")
-        headers = [th.inner_text().strip() for th in page.query_selector_all("table thead th")]
-        if headers:
-            headers[0] = "Fii"
+        col_headers = [th.inner_text().strip() for th in page.query_selector_all("table thead th")]
+        if col_headers:
+            col_headers[0] = "Fii"
 
+        dados = []
         for row in rows:
-            cols = row.query_selector_all("td")
+            cols = [td.inner_text().strip() for td in row.query_selector_all("td")]
             if cols:
-                resultados.append({headers[i]: cols[i].inner_text().strip() for i in range(len(cols))})
+                dados.append(dict(zip(col_headers, cols)))
 
         browser.close()
-    return resultados
+        return dados
