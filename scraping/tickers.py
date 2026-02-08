@@ -13,7 +13,7 @@ ENCRYPTED_FII = os.environ.get("ENCRYPTED_FII")
 
 if not all([KEY, ENCRYPTED_ACAO, ENCRYPTED_FII]):
     raise EnvironmentError(
-        "As variáveis de ambiente ENCRYPTION_KEY, ENCRYPTED_ACAO e ENCRYPTED_FII precisam estar definidas."
+        "Variáveis de ambiente ENCRYPTION_KEY, ENCRYPTED_ACAO e ENCRYPTED_FII não estão definidas."
     )
 
 fernet = Fernet(KEY.encode())
@@ -24,8 +24,7 @@ def decrypt_url(encrypted_url: str) -> str:
     """
     return fernet.decrypt(encrypted_url.encode()).decode()
 
-
-# ======== Função interna para coletar tickers ========
+# ======== Função para buscar tickers ========
 def _get_tickers_from_url(encrypted_url: str):
     url = decrypt_url(encrypted_url)
     r = requests.get(url, headers=HEADERS, timeout=20)
@@ -43,11 +42,10 @@ def _get_tickers_from_url(encrypted_url: str):
 
     return sorted(set(tickers))
 
-
 # ======== Função pública ========
 def get_all_tickers():
     """
-    Retorna todos os tickers válidos do Fundamentus,
+    Retorna todos os tickers válidos,
     separados em AÇÕES e FIIs
     """
     return {
@@ -55,12 +53,8 @@ def get_all_tickers():
         "FII": _get_tickers_from_url(ENCRYPTED_FII)
     }
 
-
 # ======== Teste rápido ========
 if __name__ == "__main__":
-    try:
-        tickers = get_all_tickers()
-        print("ACAO:", tickers["ACAO"][:10], "...")  # mostra os 10 primeiros
-        print("FII:", tickers["FII"][:10], "...")
-    except Exception as e:
-        print("Erro ao buscar tickers:", e)
+    tickers = get_all_tickers()
+    print("ACAO:", tickers["ACAO"][:10], "...")  # mostra os 10 primeiros
+    print("FII:", tickers["FII"][:10], "...")

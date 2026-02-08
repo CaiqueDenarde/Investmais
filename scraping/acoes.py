@@ -3,10 +3,21 @@ import os
 import requests
 from bs4 import BeautifulSoup
 from cryptography.fernet import Fernet
+import time
 
-HEADERS = {"User-Agent": "Mozilla/5.0"}
+# ======== Headers mais completos ========
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/115.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Referer": "https://www.fundamentus.com.br/"
+}
 
-# ======== Configuração de criptografia ========
+# ======== Variáveis de ambiente ========
 KEY = os.environ.get("ENCRYPTION_KEY")
 ENCRYPTED_ACAO = os.environ.get("ENCRYPTED_ACAO")
 
@@ -17,45 +28,53 @@ if not all([KEY, ENCRYPTED_ACAO]):
 
 fernet = Fernet(KEY.encode())
 
+# ======== Função para descriptografar URL ========
 def decrypt_url(encrypted_url: str) -> str:
-    """
-    Descriptografa a URL usando Fernet.
-    """
     return fernet.decrypt(encrypted_url.encode()).decode()
 
 
-# ======== Função principal ========
-def get_acoes():
-    """
-    Retorna os dados completos das ações do Fundamentus.
-    """
+# ======== Função para obter ações com retry ========
+def get_acoes(retries=3, delay=5):
     url = decrypt_url(ENCRYPTED_ACAO)
-    r = requests.get(url, headers=HEADERS, timeout=20)
-    r.encoding = "ISO-8859-1"
+    last_exception = None
 
-    soup = BeautifulSoup(r.text, "html.parser")
-    table = soup.find("table", {"id": "resultado"})  # tabela principal
+    for attempt in range(retries):
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=20)
+            r.encoding = "ISO-8859-1"
 
-    # pega os cabeçalhos e renomeia a primeira coluna
-    colunas = [th.get_text(strip=True) for th in table.find("thead").find_all("th")]
-    if colunas:
-        colunas[0] = "Ação"  # renomeia a primeira coluna
+            # ======== Debug: salva HTML recebido ========
+            with open("debug_acoes.html", "w", encoding="ISO-8859-1") as f:
+                f.write(r.text)
 
-    linhas = table.find("tbody").find_all("tr")
+            soup = BeautifulSoup(r.text, "html.parser")
+            table = soup.find("table", {"id": "resultado"})
+            if table is None:
+                raise Exception("Tabela com id='resultado' não encontrada.")
 
-    dados = []
-    for tr in linhas:
-        cols = [td.get_text(strip=True) for td in tr.find_all("td")]
-        if cols:
-            dados.append(dict(zip(colunas, cols)))
+            thead = table.find("thead")
+            if thead is None:
+                raise Exception("Não encontrei o thead na tabela.")
 
-    return dados
+            colunas = [th.get_text(strip=True) for th in thead.find_all("th")]
+            if colunas:
+                colunas[0] = "Ação"
 
+            tbody = table.find("tbody")
+            if tbody is None:
+                raise Exception("Não encontrei tbody na tabela de ações.")
 
-# ======== Teste rápido ========
-if __name__ == "__main__":
-    try:
-        acoes = get_acoes()
-        print("Exemplo de ações:", acoes[:5])  # mostra os 5 primeiros registros
-    except Exception as e:
-        print("Erro ao buscar ações:", e)
+            dados = []
+            for tr in tbody.find_all("tr"):
+                cols = [td.get_text(strip=True) for td in tr.find_all("td")]
+                if cols:
+                    dados.append(dict(zip(colunas, cols)))
+
+            return dados
+
+        except Exception as e:
+            print(f"Tentativa {attempt+1}/{retries} falhou: {e}")
+            last_exception = e
+            time.sleep(delay)
+
+    raise last_exception

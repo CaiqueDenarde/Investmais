@@ -14,13 +14,29 @@ os.makedirs(PUBLIC_DIR, exist_ok=True)
 os.makedirs(DATA_DIR, exist_ok=True)
 
 # ==========================
-# COLETA ATIVOS
+# COLETA ATIVOS COM DEBUG
 # ==========================
-acoes = get_acoes()
-fiis = get_fiis()
+try:
+    acoes = get_acoes()
+except Exception as e:
+    print("[ERRO] Falha ao coletar ações:", e)
+    # Salva debug HTML se existir
+    debug_path = os.path.join(ROOT_DIR, "scraping", "debug_acoes.html")
+    if os.path.exists(debug_path):
+        print(f"[INFO] HTML de debug salvo em: {debug_path}")
+    raise
+
+try:
+    fiis = get_fiis()
+except Exception as e:
+    print("[ERRO] Falha ao coletar FIIs:", e)
+    debug_path = os.path.join(ROOT_DIR, "scraping", "debug_fiis.html")
+    if os.path.exists(debug_path):
+        print(f"[INFO] HTML de debug salvo em: {debug_path}")
+    raise
 
 print(f"Quantidade de Ações Encontradas: {len(acoes)}")
-print(f"Quantidade de Fiis Encontrados: {len(fiis)}\n")
+print(f"Quantidade de FIIs Encontrados: {len(fiis)}\n")
 
 # ==========================
 # SALVA JSON ORIGINAIS
@@ -36,12 +52,11 @@ with open(fiis_file, "w", encoding="utf-8") as f:
     json.dump(fiis, f, ensure_ascii=False, indent=2)
 print(f"[INFO] Arquivo salvo: {fiis_file}")
 
-
 # ==========================
 # FUNÇÃO AUXILIAR PARA NOMES DE ARQUIVO
 # ==========================
 def tipo_para_arquivo(tipo):
-    mapping = {"AÇÃO": "acoes","FII": "fiis"}
+    mapping = {"AÇÃO": "acoes", "FII": "fiis"}
     return mapping.get(tipo.upper(), tipo.lower())
 
 # ==========================
@@ -67,13 +82,10 @@ def analisar_e_salvar(ativos, tipo):
 acoes_analisadas = analisar_e_salvar(acoes, "AÇÃO")
 fiis_analisados = analisar_e_salvar(fiis, "FII")
 
-
-
 # ==========================
 # RESUMO FINAL
 # ==========================
 print(f"\nAções Analisadas: {len(acoes_analisadas)}")
-print(f"Fiis Analisados: {len(fiis_analisados)}\n")
-
+print(f"FIIs Analisados: {len(fiis_analisados)}\n")
 print(f"Ações Classificadas: {len(acoes_analisadas)}")
-print(f"Fiis Classificados: {len(fiis_analisados)}")
+print(f"FIIs Classificados: {len(fiis_analisados)}")
