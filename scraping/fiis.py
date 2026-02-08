@@ -1,27 +1,37 @@
 from playwright.sync_api import sync_playwright
 
-URL_FIIS = "https://www.fundamentus.com.br/fii_resultado.php"
+URL_FII = "https://www.fundamentus.com.br/fii_resultado.php"
 
 def get_fiis():
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(
+            headless=True,
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu"
+            ]
+        )
+
         page = browser.new_page()
+        page.goto(URL_FII, wait_until="networkidle", timeout=120000)
 
-        page.goto(URL_FIIS, timeout=120000)
+        page.wait_for_selector("table", timeout=120000)
 
-        xpath_tabela = "/html/body/div[1]/div[2]/table"
-        page.wait_for_selector(f"xpath={xpath_tabela}", timeout=120000)
+        with open("debug_fiis.html", "w", encoding="utf-8") as f:
+            f.write(page.content())
 
-        table = page.query_selector(f"xpath={xpath_tabela}")
+        tabela = page.query_selector("table")
+        rows = tabela.query_selector_all("tbody tr")
+        headers = [th.inner_text().strip() for th in tabela.query_selector_all("thead th")]
 
-        headers = [th.inner_text().strip() for th in table.query_selector_all("thead th")]
         if headers:
-            headers[0] = "FII"
+            headers[0] = "Fii"
 
         dados = []
-        for row in table.query_selector_all("tbody tr"):
+        for row in rows:
             cols = [td.inner_text().strip() for td in row.query_selector_all("td")]
-            if cols:
+            if len(cols) == len(headers):
                 dados.append(dict(zip(headers, cols)))
 
         browser.close()

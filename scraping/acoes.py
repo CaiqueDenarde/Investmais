@@ -1,31 +1,41 @@
 from playwright.sync_api import sync_playwright
 
-URL_ACOES = "https://www.fundamentus.com.br/resultado.php"
+URL_ACAO = "https://www.fundamentus.com.br/resultado.php"
 
 def get_acoes():
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(
+            headless=True,
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu"
+            ]
+        )
+
         page = browser.new_page()
 
-        # abre a página
-        page.goto(URL_ACOES, timeout=120000)
+        # Vai direto para a página FINAL (sem submit JS)
+        page.goto(URL_ACAO, wait_until="networkidle", timeout=120000)
 
-        # espera a tabela renderizada via JS
-        xpath_tabela = "/html/body/div[1]/div[2]/table"
-        page.wait_for_selector(f"xpath={xpath_tabela}", timeout=120000)
+        # Aguarda QUALQUER tabela existir
+        page.wait_for_selector("table", timeout=120000)
 
-        table = page.query_selector(f"xpath={xpath_tabela}")
+        # Debug HTML (mantenha no Actions!)
+        with open("debug_acoes.html", "w", encoding="utf-8") as f:
+            f.write(page.content())
 
-        # pega os headers
-        headers = [th.inner_text().strip() for th in table.query_selector_all("thead th")]
+        tabela = page.query_selector("table")
+        rows = tabela.query_selector_all("tbody tr")
+        headers = [th.inner_text().strip() for th in tabela.query_selector_all("thead th")]
+
         if headers:
             headers[0] = "Ação"
 
-        # coleta dados
         dados = []
-        for row in table.query_selector_all("tbody tr"):
+        for row in rows:
             cols = [td.inner_text().strip() for td in row.query_selector_all("td")]
-            if cols:
+            if len(cols) == len(headers):
                 dados.append(dict(zip(headers, cols)))
 
         browser.close()
