@@ -1,9 +1,8 @@
 # acoes.py
-import os
 import requests
 from bs4 import BeautifulSoup
-from cryptography.fernet import Fernet
 import time
+import os
 
 # ======== Headers completos ========
 HEADERS = {
@@ -17,35 +16,21 @@ HEADERS = {
     "Referer": "https://www.fundamentus.com.br/"
 }
 
-# ======== Variáveis de ambiente ========
-KEY = os.environ.get("ENCRYPTION_KEY")
-ENCRYPTED_ACAO = os.environ.get("ENCRYPTED_ACAO")
-
-if not all([KEY, ENCRYPTED_ACAO]):
-    raise EnvironmentError(
-        "As variáveis de ambiente ENCRYPTION_KEY e ENCRYPTED_ACAO precisam estar definidas."
-    )
-
-fernet = Fernet(KEY.encode())
-
-# ======== Função para descriptografar URL ========
-def decrypt_url(encrypted_url: str) -> str:
-    return fernet.decrypt(encrypted_url.encode()).decode()
-
+# ======== URL do Fundamentus ========
+URL_ACOES = "https://www.fundamentus.com.br/resultado.php"
 
 # ======== Função para obter ações com retry e debug ========
 def get_acoes(retries=3, delay=5):
-    url = decrypt_url(ENCRYPTED_ACAO)
     last_exception = None
 
     for attempt in range(retries):
         try:
             print(f"Buscando ações... tentativa {attempt+1}")
-            r = requests.get(url, headers=HEADERS, timeout=20)
+            r = requests.get(URL_ACOES, headers=HEADERS, timeout=20)
             r.encoding = "ISO-8859-1"
 
             # ======== Salva HTML para debug ========
-            debug_file = "debug_acoes.html"
+            debug_file = os.path.join(os.path.dirname(__file__), "debug_acoes.html")
             with open(debug_file, "w", encoding="ISO-8859-1") as f:
                 f.write(r.text)
             print(f"HTML salvo em {debug_file}")
@@ -55,7 +40,7 @@ def get_acoes(retries=3, delay=5):
             
             if table is None:
                 print("⚠️ Aviso: Tabela com id='resultado' não encontrada no HTML.")
-                return []  # Retorna lista vazia, não quebra o CI
+                return []  # Retorna lista vazia
 
             thead = table.find("thead")
             tbody = table.find("tbody")
@@ -73,6 +58,7 @@ def get_acoes(retries=3, delay=5):
                 if cols:
                     dados.append(dict(zip(colunas, cols)))
 
+            print(f"Quantidade de Ações Encontradas: {len(dados)}")
             return dados
 
         except Exception as e:

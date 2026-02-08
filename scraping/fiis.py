@@ -1,9 +1,8 @@
 # fiis.py
-import os
 import requests
 from bs4 import BeautifulSoup
-from cryptography.fernet import Fernet
 import time
+import os
 
 # ======== Headers completos ========
 HEADERS = {
@@ -17,35 +16,21 @@ HEADERS = {
     "Referer": "https://www.fundamentus.com.br/"
 }
 
-# ======== Variáveis de ambiente ========
-KEY = os.environ.get("ENCRYPTION_KEY")
-ENCRYPTED_FII = os.environ.get("ENCRYPTED_FII")
-
-if not all([KEY, ENCRYPTED_FII]):
-    raise EnvironmentError(
-        "As variáveis de ambiente ENCRYPTION_KEY e ENCRYPTED_FII precisam estar definidas."
-    )
-
-fernet = Fernet(KEY.encode())
-
-# ======== Função para descriptografar URL ========
-def decrypt_url(encrypted_url: str) -> str:
-    return fernet.decrypt(encrypted_url.encode()).decode()
-
+# ======== URL do Fundamentus para FIIs ========
+URL_FIIS = "https://www.fundamentus.com.br/fii_resultado.php"
 
 # ======== Função para obter FIIs com retry e debug ========
 def get_fiis(retries=3, delay=5):
-    url = decrypt_url(ENCRYPTED_FII)
     last_exception = None
 
     for attempt in range(retries):
         try:
             print(f"Buscando FIIs... tentativa {attempt+1}")
-            r = requests.get(url, headers=HEADERS, timeout=20)
+            r = requests.get(URL_FIIS, headers=HEADERS, timeout=20)
             r.encoding = "ISO-8859-1"
 
             # ======== Salva HTML para debug ========
-            debug_file = "debug_fiis.html"
+            debug_file = os.path.join(os.path.dirname(__file__), "debug_fiis.html")
             with open(debug_file, "w", encoding="ISO-8859-1") as f:
                 f.write(r.text)
             print(f"HTML salvo em {debug_file}")
@@ -55,7 +40,7 @@ def get_fiis(retries=3, delay=5):
             
             if table is None:
                 print("⚠️ Aviso: Nenhuma tabela encontrada no HTML recebido.")
-                return []  # Retorna lista vazia, não quebra o CI
+                return []  # Retorna lista vazia
 
             thead = table.find("thead")
             tbody = table.find("tbody")
@@ -73,6 +58,7 @@ def get_fiis(retries=3, delay=5):
                 if cols:
                     dados.append(dict(zip(colunas, cols)))
 
+            print(f"Quantidade de FIIs Encontrados: {len(dados)}")
             return dados
 
         except Exception as e:
